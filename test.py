@@ -56,12 +56,14 @@ def detect_copy_move(image_path, block_size=8, ksize=9, sigma=5, theta=1*np.pi/4
 
 
 paths = []
+images = []
 PATH = "datasets/COFOMOD_v2/"
 
 for x in os.listdir(PATH):
     if x.endswith(".png") or x.endswith(".jpg") or x.endswith(".jpeg"):
         # Prints only text file present in My Folder
         paths.append(PATH+x)
+        images.append(x)
 
 false_positive = 0
 false_negative = 0
@@ -70,7 +72,8 @@ true_positive = 0
 
 x = 0
 error = 0
-L = 100
+L = 1000
+index = 0
 
 for path in paths:
     if (x == L):
@@ -78,7 +81,7 @@ for path in paths:
         break
     x += 1
     detection = detect_copy_move(path)
-    stre = path.split("_")
+    stre = images[index].split("_")
     if (len(stre[1]) != 1):
         x = x-1
     else:
@@ -98,7 +101,7 @@ for path in paths:
             else:
                 true_positive += 1
 
-    # print(detection, real_detected)
+    index = index+1
 
 accuracy = error/L
 precision = true_positive/(true_positive+false_positive)
