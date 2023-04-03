@@ -109,7 +109,7 @@ def feature_matrix_generation(blocks, filters):
             block_features[p]["y"] = j
             p = p+1
             # at each i,j position of Image I compute feature vector
-    # block_features = np.argsort(block_features, order='f_vector')
+    block_features = np.sort(block_features, order='f_vector')
     # lexographically sorting the above feature matrix
     return block_features
 
@@ -129,17 +129,19 @@ def detection(block_features_matrix, Nf=3, Nd=16, D=3):
 
     RETURNS:
 
-    True or False
+    0 or 1
 
     '''
     # Compare each block with all other blocks
-    for i in range(len(block_features_matrix)):
+    i = 0
+    for block in block_features_matrix:
         # this will have all boolean matches between vectors i and j for all j<Nf+i
-        for j in range(np.min(i+Nf, len(block_features_matrix))):
+        k = np.minimum(i+Nf, len(block_features_matrix))
+        for j in range(k):
             # j-i < Nf
-            if (np.linalg.norm(block_features_matrix[i]["feature_vector"]-block_features_matrix[j]["feature_vector"]) < D):
-                d = np.array([block_features_matrix[i]["x"]-block_features_matrix[j]["x"],
-                              block_features_matrix[i]["y"]-block_features_matrix[j]["y"]])
+            if (np.linalg.norm(block["f_vector"]-block_features_matrix[j]["f_vector"]) < D):
+                d = np.array([block["x"]-block_features_matrix[j]["x"],
+                              block["y"]-block_features_matrix[j]["y"]])
                 if (np.linalg.norm(d) > Nd):
                     return True
                     # similarity found i.e possible copy move
@@ -148,6 +150,7 @@ def detection(block_features_matrix, Nf=3, Nd=16, D=3):
                     # No similarity found i.e no copy move
             else:
                 pass
+        i = i+1
     return False
 
 
@@ -239,18 +242,18 @@ for path in paths:
         # we are skipping bit mask images as they are not images that we have to consider
         x = x-1
     else:
-        detection = detect_copy_move(path, filters)
+        detected = detect_copy_move(path, filters)
         real_detected = 1 if stre[1] == "F" else 0
 
         if (real_detected == 0):
-            if (detection == 0):
+            if (detected == 0):
                 true_negative += 1
             else:
                 false_positive += 1
                 error += 1
 
         else:
-            if (detection == 0):
+            if (detected == 0):
                 false_negative += 1
                 error += 1
             else:
@@ -258,12 +261,12 @@ for path in paths:
 
         t1 = time.time()
 
-        print(f"Time elapsed for a image {t1-t0}")
+        print(f"Time elapsed for a image {t1-t2}")
 
     index = index+1
 
 
-accuracy = error/L
+accuracy = 1 - (error/L)
 precision = true_positive/(true_positive+false_positive)
 recall = true_positive/(true_positive+false_negative)
 f1_score = 2/((1/precision)+(1/recall))
