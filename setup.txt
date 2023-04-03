@@ -1,0 +1,5 @@
+Steps to setup this code 
+
+1. Create a folder named datasets and in that folder create folder COFOMOD_v2 
+2. Download all the images from the link https://www.vcl.fer.hr/comofod/ and extract the zip file into that folder
+3. Download opencv-python, numpy, matplotlib packages 

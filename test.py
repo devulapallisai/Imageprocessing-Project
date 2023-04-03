@@ -94,8 +94,9 @@ def feature_matrix_generation(blocks, filters):
 
     '''
     block_features = np.zeros(
-        (len(blocks), len(blocks[0])), dtype=[('f_vector', np.ndarray, len(filters)),
-                                              ('x', int), ('y', int)])
+        len(blocks)*len(blocks[0]), dtype=[('f_vector', np.ndarray, len(filters)),
+                                           ('x', int), ('y', int)])
+    p = 0
     for i in range(len(blocks)):
         for j in range(len(blocks[i])):
             filtered = np.array(
@@ -103,11 +104,12 @@ def feature_matrix_generation(blocks, filters):
             feature_vector = np.mean(filtered, axis=(1, 2))
             # feature_vector has rotation invariant for given scale
             # storing feature vector of each block along with its top left corner coordinates
-            block_features[i][j]["f_vector"] = feature_vector
-            block_features[i][j]["x"] = i
-            block_features[i][j]["y"] = j
+            block_features[p]["f_vector"] = feature_vector
+            block_features[p]["x"] = i
+            block_features[p]["y"] = j
+            p = p+1
             # at each i,j position of Image I compute feature vector
-    block_features = np.argsort(block_features, order='f_vector')
+    # block_features = np.argsort(block_features, order='f_vector')
     # lexographically sorting the above feature matrix
     return block_features
 
@@ -133,24 +135,19 @@ def detection(block_features_matrix, Nf=3, Nd=16, D=3):
     # Compare each block with all other blocks
     for i in range(len(block_features_matrix)):
         # this will have all boolean matches between vectors i and j for all j<Nf+i
-        truth_vector = []
-        for j in range(0, np.min(i+Nf, len(block_features_matrix))):
+        for j in range(np.min(i+Nf, len(block_features_matrix))):
             # j-i < Nf
             if (np.linalg.norm(block_features_matrix[i]["feature_vector"]-block_features_matrix[j]["feature_vector"]) < D):
                 d = np.array([block_features_matrix[i]["x"]-block_features_matrix[j]["x"],
                               block_features_matrix[i]["y"]-block_features_matrix[j]["y"]])
                 if (np.linalg.norm(d) > Nd):
-                    truth_vector.append(True)
+                    return True
                     # similarity found i.e possible copy move
                 else:
-                    truth_vector.append(False)
+                    pass
                     # No similarity found i.e no copy move
             else:
-                truth_vector.append(False)
-        truth_vector = np.array(truth_vector)
-        if (truth_vector.any()):
-            # for all blocks whether it is true or not
-            return True
+                pass
     return False
 
 
