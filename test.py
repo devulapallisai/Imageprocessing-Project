@@ -47,7 +47,7 @@ def gabor_filters(ksize=5, sigma=5, theta=10, lambd=1, gamma=1, scale_start=0.5,
             scale_filters.append(gabor_filter/np.sum(gabor_filter))
 
         # rotation invariant scaled version of Gabor filter
-        averaged_value = np.sum(scale_filters, axis=0)
+        averaged_value = np.mean(scale_filters, axis=0)
         filters.append(averaged_value)
 
     return filters
