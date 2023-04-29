@@ -1,3 +1,4 @@
+# This whole Code is written by Devulapalli Sai Prachodhan, Roll No : EE20BTECH11013
 import cv2
 import os
 import numpy as np
@@ -5,50 +6,50 @@ import time
 import matplotlib.pyplot as plt
 
 
-def gabor_filters(ksize=5, sigma=5, theta=10, lambd=1, gamma=1, scale_start=0.5, scale_end=1.5, step=0.2):
+def get_gabor_filters(size, sigma_min, sigma_max, K, n_theta, n_scale):
     ''' This function will precompute scaled and rotated versions of Gabor filters
 
     INPUT PARAMETERS :
 
+    size      = Gabor filter square window size
 
-    ksize      = Gabor filter square window size
+    sigma     = sigma_min -> minimum standard deviation and sigma_max -> maximum standard deviation of filter
 
-    sigma      = standard deviation for the Gabor filter
+    n_theta   = number of angles that are into consideration
 
-    theta      = number of angles that are into consideration
+    K         = parameter to decide Uh and Ul as said in reference paper
 
-    lambd      = wavelength of filter (can be attributed to scale change)
-
-    gamma      = gamma correction factor
-
-    scale_start= varying scale of Gabor filter starting  value
-
-    scale_end  = varying scale of Gabor filter end value
-
-    step       = step size of the varying scale of the above Gabor filters
+    n_scale   = number of scales
 
     RETURNS :
 
     filters    = 2D matrix with generated Gabor filters where each row represents filters different rotation for
                  a given scale similar to SIFT(type = 2D array of 2D array)
     '''
-    # Define the Gabor filter bank
+    # Define the ranges of frequencies and orientations
+    uh = K / (2 * np.pi * sigma_max)
+    ul = K / (2 * np.pi * sigma_min)
+    freqs = np.geomspace(ul, uh, n_scale)
+    thetas = np.linspace(0, np.pi, n_theta, endpoint=False)
+
+    # Generate the filters
     filters = []
-
-    # each angle given there are theta number of angles into consideration also can think as angular resolution
-    angle = (2*np.pi)/theta
-
-    for scale in np.arange(scale_start, scale_end, step):
-        # scales changing from start to end with each step of size step
+    for freq in freqs:
         scale_filters = []
-        for j in range(theta):
-            gabor_filter = cv2.getGaborKernel(
-                (ksize, ksize), np.sqrt(scale)*sigma, j*angle, scale*lambd, gamma, 0, ktype=cv2.CV_32F)
-            scale_filters.append(gabor_filter/np.sum(gabor_filter))
-
-        # rotation invariant scaled version of Gabor filter
-        averaged_value = np.mean(scale_filters, axis=0)
-        filters.append(averaged_value)
+        for theta in thetas:
+            # Generate the Gabor filter for the given frequency and orientation
+            kernel = cv2.getGaborKernel(
+                size,          # kernel size
+                sigma_min,     # sigma (standard deviation)
+                theta,         # orientation (radians)
+                1.0/freq,      # wavelength
+                1.0,           # aspect ratio
+                0,            # phase offset
+                cv2.CV_64F     # kernel datatype
+            )
+            scale_filters.append(kernel)
+        rot_invariant = np.sum(scale_filters, axis=0)
+        filters.append(rot_invariant)
 
     return filters
 
@@ -137,7 +138,7 @@ def detection(block_features_matrix, Nf=3, Nd=16, D=3):
     for block in block_features_matrix:
         # this will have all boolean matches between vectors i and j for all j<Nf+i
         k = np.minimum(i+Nf, len(block_features_matrix))
-        for j in range(k):
+        for j in range(i, k, 1):
             # j-i < Nf
             if (np.linalg.norm(block["f_vector"]-block_features_matrix[j]["f_vector"]) < D):
                 d = np.array([block["x"]-block_features_matrix[j]["x"],
@@ -198,14 +199,14 @@ paths = []
 images = []
 # path of the input folder of dataset which has all images
 
-PATH = "datasets/COFOMOD_v2/"
+PATH = "./datasets/COFOMOD_v2/"
 file_formats = [".png", ".jpg", ".jpeg"]  # image file formats
 
 # --------------------------GABOR FILTERS GENERATION ---------------------------------
-filter_size = 5
-filter_standard_dev = 10
+filter_size = 16
 no_filter_theta = 12  # theta angluar resolution = 30degree
-filters = gabor_filters(filter_size, filter_standard_dev, no_filter_theta)
+filters = get_gabor_filters((filter_size, filter_size), sigma_min=5,
+                            sigma_max=10, K=0.7, n_theta=no_filter_theta, n_scale=5)
 # ------------------------------------------------------------------------------------
 
 for x in os.listdir(PATH):
@@ -225,7 +226,7 @@ true_positive = 0
 
 x = 0
 error = 0
-L = 10  # number of images from dataset to test upon
+L = 40  # number of images from dataset to test upon
 index = 0
 t0 = time.time()
 t1 = t0
@@ -238,9 +239,32 @@ for path in paths:
     x += 1
     # detection using pre computed Gabor filters
     stre = images[index].split("_")
-    if (len(stre[1]) != 1):
+    if (len(stre) == 2):
         # we are skipping bit mask images as they are not images that we have to consider
-        x = x-1
+        if (stre[1] == "B.png" or stre[1] == "M.png"):
+            # we are skipping bit mask images as they are not images that we have to consider
+            x = x-1
+        else:
+            detected = detect_copy_move(path, filters)
+            real_detected = 1 if stre[1] == "F" else 0
+
+            if (real_detected == 0):
+                if (detected == 0):
+                    true_negative += 1
+                else:
+                    false_positive += 1
+                    error += 1
+
+            else:
+                if (detected == 0):
+                    false_negative += 1
+                    error += 1
+                else:
+                    true_positive += 1
+
+            t1 = time.time()
+
+            print(f"{x} : Time elapsed for image is {t1-t2}")
     else:
         detected = detect_copy_move(path, filters)
         real_detected = 1 if stre[1] == "F" else 0
@@ -261,10 +285,11 @@ for path in paths:
 
         t1 = time.time()
 
-        print(f"Time elapsed for a image {t1-t2}")
+        print(f"{x} : Time elapsed for image is {t1-t2}")
 
     index = index+1
 
+# Metrics considered
 
 accuracy = 1 - (error/L)
 precision = true_positive/(true_positive+false_positive)

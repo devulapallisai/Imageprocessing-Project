@@ -1,6 +1,7 @@
-Steps to setup this code 
+Steps to setup code of approach using Gabor filters
 
 1. Create a folder named datasets and in that folder create folder COFOMOD_v2 
 2. Download all the images from the link https://www.vcl.fer.hr/comofod/ and extract the zip file into that folder. This is to make sure the paths of project coincide otherwise code will give you error
 3. Download opencv-python, numpy, matplotlib packages 
-4. L (in the code) = Number of images being tested
+4. L (in the code) = Number of images being tested. (Change this If you want any testing)
+5. Make sure the PATH variable in the file is correct with respect to your setup
